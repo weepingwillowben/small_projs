@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link rel="stylesheet" type="text/css" href="/static/styles/main.css">
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.6/ace.js"></script>
+<script src="/static/js/game.js"></script>
+
+<title>codegame</title>
+
+<body>
+    <div id="menubuttons">
+        <button class="menubutton" onclick="new_game_popup();">New Game</button>
+        <button class="menubutton" onclick="save_game_popup();">Save</button>
+        <button class="menubutton" onclick="load_game_popup();">Load</button>
+    </div>
+    <div id="board">
+        <canvas id="boardcanv" width="500" height="500">
+
+        </canvas>
+    </div>
+    <div id="code_area">
+                function foo(items) {
+            var x = "All this is syntax highlighted";
+            return x;
+        }
+    </div>
+    <div id="newgamepopup" class="popup" hidden>
+        <div class="popup-display vertical-center horizontal-center">
+            Would you like to start a new game?
+
+            <button onclick="start_new_game();">Yes</button>
+            <button onclick="hide(document.getElementById('newgamepopup'));">Cancel</button>
+        </div>
+    </div>
+    <div id="loadgamepopup" class="popup" hidden>
+        <div class="popup-display vertical-center horizontal-center">
+            Which game would you like to load?
+
+            <a id="game_names_loading"> Loading... </a>
+
+            <div id="game_name_list">
+
+            </div>
+            <button onclick="hide(document.getElementById('newgamepopup'));">Cancel</button>
+        </div>
+    </div>
+</body>
+<script>
+    var editor = ace.edit("code_area");
+    editor.setTheme("ace/theme/monokai");
+    editor.getSession().setMode("ace/mode/javascript");
+</script>
+</html>

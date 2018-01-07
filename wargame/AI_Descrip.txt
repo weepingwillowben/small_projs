@@ -1,0 +1,80 @@
+Val(T,M,P) = (if IsBuilding(T) 
+			 then Cost(T)
+			 else (Cost(T) + FutureMoveVal(T,M,P))
+			 ) / T.hitpoints() #todo: try different ways to make value dependent on how much it has already been killed
+
+ChanceSomethingThere(P,M) = BuildProb(P,M) +[prob] prob_sum_of(MoveProb(T,M,P) for T in AllTroops)
+BlockingChance(P1,P2,M) = 
+	sum_of((
+		if (int(abs(P1.Y - P2.Y / P1.X - P2.X)) == int(abs(P1.Y - P2.Y / P1.X - P2.X)))  // todo : check for accuracy from code
+		then ChanceSomethingThere(P,M) 
+		else 0.0) 
+	for P in PsBetween(P1,P2))
+
+AttackTroopPointProb(AT,DT,M,AP,DP) = BlockingChance(AP,DP,M) * WinChance(AT,DT)
+AttackTroop_IsolatedProb(AT,DT,M,AP) = sum_of(AttackTroopPointProb(AT,DT,AP,P) for P in square_range(AP,AT.range))
+//AttackSomethingProb(AT,M,AP) = prob_sum_of(AttackTroop_IsolatedProb(AT,EnT,AP) for EnT in EnemyTroops)
+
+AttackTroopProb(AT,DT,M,AP) = (1.0 - prob_sum_of(
+		if AttackTroop_IsolatedVal(AT,EnT,M,AP) > AttackTroop_IsolatedVal(AT,DT,M,AP) and EnT != DT
+		then AttackTroop_IsolatedProb(AT,EnT,M,AP) 
+		else 0.0
+	for EnT in EnemyTroops)) * AttackTroop_IsolatedProb(AT,DT,M,AP)
+
+AttackTroopPointVal(AT,DT,M,AP,TP) = Val(DT,M,TP) * AttackTroopPointProb(AT,DT,M,AP,TP)
+AttackTroop_IsolatedVal(AT,DT,M,AP) = sum_of(AttackTroopPointVal(AT,DT,M,AP,P) for P in square_range(AP,AT.range))
+AttackTroopVal(AT,DT,M,AP) = AttackTroopProb(AT,DT,M,AP) * AttackTroop_IsolatedVal(AT,DT,M,AP))
+AttackVal(AT,M,AP) = sum_of(AttackTroopVal(AT,EnT,M,AP) for EnT in EnemyTroops)
+
+NetValModifier(T,M,P) = (AttackVal(T,M,P)
+							- sum_of(AttackTroopVal(EnT,T,M,P) for EnT in EnemyTroops)
+						 * (1 - ChanceSomethingThere(P,M))
+						 
+#accumulates the value of moving to locations
+MoveToVal(T,0,P) = NetValModifier(T,0,P)
+	| MoveToVal(T,M,P) = 
+		let PrevP = max_of(
+						ValP( MoveToVal(T,M-1,P), P)
+						for P in square_range(P,1)
+					).P
+		in
+			NetValModifier(T,M,P) + MoveToVal(T,M,PrevP)
+		end
+		
+#represents the accumulated value of the path the troop is traveling on both forwards and backwards
+MovePathVal(T,MaxM,P) = MoveToVal(T,0,P)
+	| MovePathVal(T,M,P) = 
+		let NP = max_of( ValP( MovePathVal(T,M+1,P), P) 
+					for P in square_range(P,1)).P
+		in 
+			MovePathVal(T,M+1,NP) + MoveToVal(T,M,P) - MoveToVal(T,M+1,P) // todo : check for accuracy from code
+		end
+		
+#represents the accumulated value of the move path ahead of it
+FutureMoveVal(T,M,P) = MovePathVal(T,M,P) + NetValModifier(T,M,P) - MoveToVal(T,M,P)
+			
+//MoveProb(T,M,P) = MovePathVal(T,M,P) / sum_of(MovePathVal(T,M,MP) for MP in AllSqares)
+
+BuildProb(P,0) = if ThereIsBuilding(P) then 1.0 else 0.0
+	| BuildProb(P,M) = BuildProb(P,M-1) - sum_A_over_enemies(BuildProb(P,M))
+
+LandVal(Play) = sum_of(B.cost() in Play.Buildings) /
+					sum_of(if is_fully_dominated_by(P,Play) then 1.0 else 0.0 for P in BoardSquares)
+LandVal(P) = 
+
+
+
+
+#Micro Move
+
+val_attack(0,T,MP,AP) > 0 #todo:list the actual initial value here
+	| val_attack(I,T,MP,AP) = val_attack(I-1,T,MP,AP) - val_attack(I-1,T,MP,AP) * 
+		sum(
+			sum(val_adj(I-1,AT,AMP,AP) for AMP in AT.movebox)
+			for AT in EnemyTroops
+		)
+
+val_move(T,P)
+val_tot(T,MP) = val_move(T,MP) + sum(val_attack(T,P))
+adjval_m(T,M)
+adjval_a(T,M,A)

@@ -1,0 +1,723 @@
+/*struct VarInfo {
+	double MTotVar;
+	double ATotVar;
+	double MMean;
+	double AMean;
+	VarInfo(GroupSquareVals & Vals) {
+
+	}
+	double GetMVal(double & MVal)
+};*/
+/*
+void MakeAdjVals(GroupSquareVals & TVals, GroupSquareVals & AdjVals, double ArbitrarySD){
+	AdjVals = TVals;
+	//Turns AdjVals into (val-AvVal)/maxZScore
+	for (auto & TroopPair : AdjVals){
+		MoveSquareVals & Vals = TroopPair.second;
+
+		int N = GetN(Vals);
+			
+		double Mean = GetMean(Vals);
+			
+		double ZeroSD = GetSD(Vals);
+
+		double MaxZScore = GetMaxZScore(Vals);
+
+		//AdjVals are being set using adjustments on their own values (remember they are copied from TVals)
+		for (auto & MovePair : Vals){
+			MovePair.Data->MoveV = 0; MovePair.Data->MoveV / 10;
+			for (double & AttackVal : MovePair.Data->AttackV.Arr){
+				//the SD is actually in terms of the regular standard deviation
+				double ThisDeviation = AttackVal - Mean;
+				//these SDs are not actually related!! which means that ThisZScore can actually be higher than MaxZ
+				//but it is OK since I don't care abou the variation in the lower half of the distribution
+				double ThisZScore = ThisDeviation / ZeroSD;
+				double NewVal = ArbitrarySD * (ThisZScore / MaxZScore);
+				AttackVal = max(0.0,NewVal);//lowest value is zero
+			}
+		}
+	}
+}*/
+/*
+#ifdef DrawMacroPath
+	auto Info = GetInteractingPaths();
+	auto & TInf = Info[rand() % Info.size()];
+	for (auto & RangePair : TInf.Info)
+		for (Point P : RangePair.Data->Info)
+			DrawColorSquare(Red, P.X, P.Y, 0.1);
+#endif
+#ifdef DrawRandomPath
+	Troop * PathT = Troops[rand() % Troops.size()];
+	Group * PathG = NULL;
+	for (Group * G : Groups)
+		for (Troop * T : G->Troops)
+			if (T == PathT)
+				PathG = G;
+
+	if (PathG == NULL)
+		return;
+	Array2d<double> PathVals = GetValuesOfTroopSquares(PathT, PathG->Attachments, Modifier{ 1.0, 1.0, 1.0, 1.0 });
+	double MaxPathV = -1000000000.0;
+	for (double PVal : PathVals){
+		MaxPathV = max(MaxPathV, PVal);
+		MaxPathV = max(MaxPathV, -PVal);
+	}
+	for (Point P : BoardIterate()){
+		if (PathVals[P] > 0)
+			DrawColorSquare(Blue, P.X, P.Y, PathVals[P] / (MaxPathV*3));
+		else
+			DrawColorSquare(Black, P.X, P.Y, -PathVals[P] / (MaxPathV*3));
+	}
+	auto Paths = GetPaths(PathT->Spot, PathT->MovementPoints, PathVals);
+	for (auto RangePair : Paths)
+		for (Point P : RangePair.Data->Info)
+			DrawColorSquare(Red, P.X, P.Y, 0.1);
+#endif
+#ifdef DrawMoveValLoc
+	Group * ThisG = Groups[rand() % Groups.size()];
+	GroupSquareVals Vals = GetValsOfGroupMove(ThisG);
+	Color ThisMarker = Blue;
+	if (rand() % 2 == 0){
+		ThisMarker = Yellow;
+		SubtractBlockingMoves(Vals,10);
+	}
+
+	Troop * ThisTroop = ThisG->Troops[rand() % ThisG->GetSize()];
+	MoveSquareVals & TMoveVals = Vals[ThisTroop];
+	double MaxVal = -10e100;
+	double MinVal = 10e100;
+	for (auto & AttcPair : TMoveVals){
+		AttackSquareVals & AttcV = AttcPair.Info();
+		double DoVal = max(AttcV.Arr);// you act upon the best value
+		MaxVal = max(MaxVal,DoVal);
+		MinVal = min(MinVal,DoVal);
+	}
+	double ValRange = MaxVal - MinVal;
+	for (auto & AttcPair : TMoveVals){
+		Point P = AttcPair.P;
+		AttackSquareVals & AVals = AttcPair.Info();
+		double DoVal = max(AVals.Arr);
+		DrawColorSquare(Red, P.X, P.Y, (DoVal - MinVal) / ValRange);
+	}
+	DrawColorSquare(ThisMarker, ThisTroop->Spot.X, ThisTroop->Spot.Y);
+#endif
+#ifdef ShowSubtractEffect
+	Troop * ThisTroop = Troops[rand() % Troops.size()];
+	Group * ThisG = FindGroup(ThisTroop);
+	GroupSquareVals OrigVals = GetValsOfGroupMove(ThisG);
+	GroupSquareVals ChangeVals = OrigVals;
+	SubtractBlockingMoves(ChangeVals,10);
+	GroupSquareVals DifVals = OrigVals;
+
+	MoveSquareVals & OrigV = OrigVals[ThisTroop];
+	MoveSquareVals & ChangeV = ChangeVals[ThisTroop];
+	for (auto & AttcVal1 = OrigV.begin(), AttcVal2 = ChangeV.begin(); AttcVal1 != OrigV.end(); AttcVal1++, AttcVal2++){
+		vector<double> & AtV = (*AttcVal1).Data->Arr, AtV2 = (*AttcVal2).Data->Arr;
+		for (int g : range(AtV.size()))
+			AtV[g] -= AtV2[g];
+	}
+	MoveSquareVals & TChangeVals = OrigV;
+	double MaxVal = -10e100;
+	double MinVal = 10e100;
+	double MaxOrVal = MaxVal, MinOrVal = MinVal;
+	for (auto & AttcPair : TChangeVals){
+		AttackSquareVals & AttcV = AttcPair.Info();
+		double DoVal = max(AttcV.Arr);// you act upon the best value
+		MaxVal = max(MaxVal,DoVal);
+		MinVal = min(MinVal,DoVal);
+	}
+	double ValRange = MaxVal - MinVal;
+	for (auto & AttcPair : TChangeVals){
+		Point P = AttcPair.P;
+		AttackSquareVals & AVals = AttcPair.Info();
+		double DoVal = max(AVals.Arr);
+		DrawColorSquare(Red, P.X, P.Y, (DoVal - MinVal) / ValRange);
+	}
+	DrawColorSquare(Yellow, ThisTroop->Spot.X, ThisTroop->Spot.Y,0.5);
+#endif*/
+
+//
+//void Iterfeer(TroopCollection & Collect){
+//	//Win_Chances makes sure that you don't always have to recompute the chance to win
+//	unordered_map<Troop *, double> Win_Chances;
+//
+//	for (Point ALoc : BoardIterate()){
+//		for (auto & AValCh : Collect[ALoc]){
+//			double AC = AValCh.Info.Chance;//will never be zero
+//			Win_Chances.clear();
+//			for (Point AP : SquareIterate(ALoc, AValCh.T->Range)){
+//				for (auto & DValCh : Collect[AP]){
+//					if (DValCh.TeamNum == AValCh.TeamNum)
+//						continue;
+//					double DC = DValCh.Info.Chance;
+//					/*if the Troop * is not in the map, then it creates a new
+//					spot and assigns it to default(0). This means that if the value is
+//					zero then you need to compute it (the computed value will never be zero).*/
+//					double & WinChance = Win_Chances[DValCh.T];
+//					if (WinChance == 0)
+//						WinChance = GetChanceToWin(AValCh.T, DValCh.T);
+//
+//					double ChangeChance = WinChance * DC * AC;
+//				}
+//			}
+//		}
+//	}
+//}
+
+//void ToTroopCollection(TroopCollection & OutTCollect, TChanceCollection & InChance, TChanceCollection & InVals){
+//	//initializes OutTChance
+//	for (auto & Out : OutTCollect)
+//		Out.resize(0);
+//
+//	for (int TNum : range(InChance.Size)){
+//		auto & TVal = InVals[TNum];
+//		auto & TChance = InChance[TNum];
+//		for (Point P : BoardIterate()){
+//			if (TChance.Info[P] > 0)
+//				OutTCollect[P].push_back(MakeTInfo(TChance.T, TChance.TeamNum, TChance.PlayerNum, ValChance{ TChance.Info[P], TVal.Info[P] }));
+//		}
+//	}
+//}
+//void FromTroopCollection(TChanceCollection & OutTVals, TroopCollection & InCollect){
+//	//initializes OutTChance (necessary because only nonzero values will be stored in InChance)
+//	for (auto & Out : OutTVals)
+//		Out.Info.Init(0);
+//	//asssumes that OutTChance has the TroopInfo all good except for the values
+//	unordered_map<Troop *, int> T_To_Int(OutTVals.Size);
+//
+//	for (int Num : range(OutTVals.Size))
+//		T_To_Int[OutTVals[Num].T] = Num;
+//
+//	for (Point P : BoardIterate()){
+//		auto & TChance = InCollect[P];
+//		for (auto & TInf : TChance){
+//			OutTVals[T_To_Int[TInf.T]].Info[P] = TInf.Info.Val;
+//		}
+//	}
+//}
+/*
+ValInfo<pair<Troop *,Attach::Attachment>> SimpleCompPlayer::FindBestSolierAttachValueAndNum(){
+	//initalises output to appropriate values
+	Troop * OutTroop = NULL;
+	double OutValue = -100000;
+	Attach::Attachment OutAttach;
+	using namespace Attach;
+	for (Group * G: Groups){
+		for (Troop * T : G->Troops){
+			Point spot = T->Spot;
+			//if it is basically going to die, there is no value to it, betters serves as a buffer for buildings and troops
+			if(Threat[spot].TThreat >= 3 && !CanMoveToSafety(T))
+				continue;
+			using namespace GroupTypes;
+			ValInfo<Attach::Attachment> CurAttach = G->GetAttachAndVal(T);
+			//if it is under threat from the enemy, there will most likely be an advantage to buying BA's like the defensive troops have
+			if(CurAttach.Info == BA)
+				CurAttach.Val += 10.0 * Threat[spot].TThreat;
+			//but no advantage and much cost to buying other things
+			else
+				CurAttach.Val -= 10.0 * Threat[spot].TThreat;
+
+			if(CurAttach.Val > OutValue){
+				OutValue = CurAttach.Val;
+				OutTroop = T;
+				OutAttach = CurAttach.Info;
+			}
+		}
+	}
+	return{ OutValue, { OutTroop, OutAttach } };
+}
+*/
+/*double SimpleCompPlayer::GetValOfSoldierMove(Troop * T, Point MoveP, Point NewGroupCen,Group * MoveG,bool MoveIsOffensive){
+	double DisVal = -Square(CrudeGetDis(T->MovementPoints, MoveP, NewGroupCen) / double(MoveG->GetWidth()));
+	DisVal *= (MoveIsOffensive ? AttackDisVal : StdDisVal);
+
+	double KillVal = GetBestAttackPoint(MoveP,T,MoveG).Val;
+
+	double DangerVal = 0;
+	if (Threat[MoveP].TThreat > 0 && Threat[MoveP].MaxAttack > T->AttackValue)
+		DangerVal = T->GetValue();
+
+	return KillVal + DisVal + DangerVal;
+}
+void SimpleCompPlayer::GetValOfGroupMove(Group * MoveG, Point MoveP, bool Offensive, vector<Point> & NewTPs, vector<double> & NewVals){
+	//remove troops from board so that the function can work properly
+	typedef RangeArray<double> RangeValArray;
+	Array2d<int> SavedPlayerOcc = PlayerOcc;
+	ClearBoardOfGroup(MoveG);
+	//deep copies the copies of the players so they can be altered by the function
+	vector<EPlayer *> SavedPlayers(AllPlayers.size());
+	for (int p = 0; p < AllPlayers.size(); p++)
+		SavedPlayers[p] = new EPlayer(AllPlayers[p]);//deep copy
+
+	const int NumOfTroops = MoveG->GetSize();
+
+	vector<bool> FinishedTroops(NumOfTroops);
+
+	vector<RangeValArray> TroopVals(NumOfTroops);
+
+	Point GroupP = MoveG->GetCen();
+	auto SetTroopValues = [&](){
+		for (int t = 0; t < NumOfTroops; t++){
+			if (FinishedTroops[t])
+				continue;
+			Troop * T = MoveG->Troops[t];
+			RangeValArray & TVals = TroopVals[t];
+			int MoveRange = T->MovementPoints;
+			TVals = RangeValArray(T->Spot, MoveRange);//initializes the array
+			TVals.Init(-10000000000000.0);
+			for (Point NewP : SquareIterate(T->Spot, MoveRange)){
+				TVals[NewP] = GetValOfSoldierMove(T, NewP, MoveP, MoveG, Offensive);//sets the values of the individual troop movements
+			}
+		}
+	};
+
+	//loops through all of the very best squares for the troops
+	double TotVal = 0;
+	auto GetBestValOfSquare = [&](Point P, int & OutT, double & OutVal){
+		double BestVal = -1000000000000000.0;
+		int BestT = -100000;
+		if (BlankPoint(P)){
+			for (int t = 0; t < NumOfTroops; t++){
+				if (FinishedTroops[t])
+					continue;
+				Troop * T = MoveG->Troops[t];
+				RangeValArray & TVals = TroopVals[t];
+				if (TVals.IsInScope(P) == false)
+					continue;
+				double ThisVal = TVals[P];
+				if (BestVal < ThisVal){
+					BestVal = ThisVal;
+					BestT = t;
+				}
+			}
+		}
+		OutVal = BestVal;
+		OutT = BestT;
+	};
+	auto GetBestPointOfTroop = [&](int TroopNum){
+		Troop * T = MoveG->Troops[TroopNum];
+		int MoveRange = T->MovementPoints;
+		RangeValArray & TVals = TroopVals[TroopNum];
+		PointVal BestP(-10000000000.0, { 0, 0 });
+		for (auto & ThisPair: TVals){
+			Point TP = ThisPair.P;
+			double ThisVal = *ThisPair.Info;
+			if (BlankPoint(TP) && BestP.Val < ThisVal)
+				BestP = PointVal(ThisVal, TP);
+		}
+		return BestP.Info;
+	};
+	auto GetBestTroopNum = [&](){
+		int ReturnTroop = -1;
+		for (int t = 0; t < NumOfTroops; t++){
+			if (FinishedTroops[t])
+				continue;
+			Point BestP = GetBestPointOfTroop(t);
+			int BestT;
+			double BestVal;
+			GetBestValOfSquare(BestP, BestT, BestVal);
+			if (BestT == t){
+				ReturnTroop = t;
+				break;
+			}
+		}
+		return ReturnTroop;
+	};
+	NewTPs.resize(NumOfTroops);
+	NewVals.resize(NumOfTroops);
+	while (true){
+		SetTroopValues();
+		int TroopNum = GetBestTroopNum();
+		if (TroopNum < 0)
+			break;
+		Point BestP =  GetBestPointOfTroop(TroopNum);
+		NewTPs[TroopNum] = BestP;
+		int useless;
+		GetBestValOfSquare(BestP, useless, NewVals[TroopNum]);
+
+		PlayerOcc[BestP] = PlayerNum;//makes the board feel this troop
+		FinishedTroops[TroopNum] = true;//blocks out further calls to this troops
+
+		//goes ahead and attacks the spot in its imaginary world
+		PointVal BestAttackP = GetBestAttackPoint(BestP, MoveG->Troops[TroopNum], MoveG);
+		if (BestAttackP.Val > 0){
+			SimpleCompPlayer::AttackLocation(BestAttackP.Info, MoveG->Troops[TroopNum]);
+			GetThreat();
+		}
+	}
+	//restores the troops to the board normally
+	PlayerOcc = SavedPlayerOcc;
+	for (int p = 0; p < AllPlayers.size(); p++){
+		AllPlayers[p]->DeepCopy(SavedPlayers[p]);
+		delete SavedPlayers[p];
+	}
+}
+double SimpleCompPlayer::GetValOfGroupMove(Group * MoveG, Point MoveP, bool Offensive){
+	vector<Point> TPs;
+	vector<double> Vals;
+	GetValOfGroupMove(MoveG, MoveP,Offensive, TPs, Vals);
+	double TotalVal = 0;
+	for (double Val : Vals)
+		TotalVal += Val;
+	return TotalVal;
+}
+*/
+/*void SimpleCompPlayer::GetGroupBoardValues(){
+	using namespace GroupTypes;
+	//initializes the values
+	GroupValue.Init({ 0, 0, 0, 0 });
+
+	auto AddValToRange = [&](GroupVal & AddVal,Point P,int Range){
+		//this function take the value that needs to be added on and spreads it over the board
+		//gets the total value of the iteration do it can spread it without the total value increasing
+		double TotDiv = 0;
+		for(Point IterP : SquareIterate(P,Range)){
+			TotDiv += 1 - GetBoardDistance(P,IterP) / (Range+0.0);
+		}
+		//adds on the appropriate parts of the values to each part of the board
+		for(Point IterP : SquareIterate(P,Range)){
+			GroupVal & CurVal = GroupValue[IterP];
+			int Dis = GetBoardDistance(P, IterP);
+			double Div = (1 - Dis / double(Range)) / TotDiv;
+
+			CurVal += AddVal * Div;
+		}
+	};
+	
+	//this value converts dollars to troop values
+	//(idea is that buying something does not create or destroy money, and so it cannot be counted one for one)
+	double StValAdjust = 10.0;
+	for (EPlayer * Play : Enemies){
+		for (Troop * EnemyT : Play->Troops){
+			GroupVal ThisGVal;
+			ThisGVal.DefendVal = 10.0;
+			ThisGVal.FullAttackVal = EnemyT->GetValue() / StValAdjust;
+			ThisGVal.RaidVal = -2.0;
+			ThisGVal.BurnVal = -5.0;
+
+			AddValToRange(ThisGVal, EnemyT->Spot, EnemyT->Range);
+		}
+		for (Building * EnemyBuild : Play->Buildings){
+			int BuildingVal = EnemyBuild->GetCost();
+			if (EnemyBuild->Type == TrainCenter){
+				GroupVal ThisGVal;
+				ThisGVal.DefendVal = 3.0;
+				ThisGVal.BurnVal = -2.0;
+				ThisGVal.RaidVal = -1.0;
+				ThisGVal.FullAttackVal = 5.0 + BuildingVal / StValAdjust;
+
+				int Range = 2;
+				AddValToRange(ThisGVal, EnemyBuild->GetAvPoint(), Range);
+			}
+			else{
+				GroupVal ThisGVal;
+				ThisGVal.DefendVal = 0.5;
+				ThisGVal.BurnVal = 2.0 * BuildingVal / StValAdjust;
+				ThisGVal.RaidVal = 0.0;
+				ThisGVal.FullAttackVal = BuildingVal / StValAdjust;
+
+				int Range = 2;
+				AddValToRange(ThisGVal, EnemyBuild->GetAvPoint(), Range);
+			}
+		}
+	}
+	for (Player * Play : Friendlies){
+		//it is a friendly thing
+		for(Troop * FTroop: Play->Troops){
+			GroupVal ThisGVal;
+			ThisGVal.DefendVal = -3.0;
+			ThisGVal.FullAttackVal = 2.0;
+			ThisGVal.RaidVal = 1.0;
+			ThisGVal.BurnVal = 5.0;
+
+			AddValToRange(ThisGVal,FTroop->Spot,FTroop->Range);
+		}
+		for(Building * FriendBuild: Play->Buildings){
+			int BuildingVal = FriendBuild->GetCost();
+			if (FriendBuild->Type == TrainCenter){
+				GroupVal ThisGVal;
+				ThisGVal.DefendVal = -1.0 + BuildingVal / StValAdjust;//it can sort of defend itself, so it isn't as high a priority
+				ThisGVal.BurnVal = 0.0;
+				ThisGVal.RaidVal = 0.0;
+				ThisGVal.FullAttackVal = 0.0;
+
+				int Range = 2;
+				AddValToRange(ThisGVal, FriendBuild->GetAvPoint(), Range);
+			}
+			else{
+				GroupVal ThisGVal;
+				ThisGVal.DefendVal = BuildingVal / StValAdjust;
+				ThisGVal.BurnVal = 0.0;
+				ThisGVal.RaidVal = 0.0;
+				ThisGVal.FullAttackVal = 0.0;
+
+				int Range = 2;
+				AddValToRange(ThisGVal, FriendBuild->GetAvPoint(), Range);
+			}
+		}
+	}
+	//get the value that is dependant on land ownership
+	for (Point P: BoardIterate()){
+		double ValOfDom;
+		if (PlayerDom[P].Influence != MaximumDomination)
+			ValOfDom = 2.0;
+		else{//since PlayerDom is active, there must be a player associated with it
+			EPlayer * Play = AllPlayers[PlayerDom[P].Player];
+			if(OnSameTeam(this, Play))
+				ValOfDom = 0.0;
+			else
+				ValOfDom = 4.0;
+		}
+		GroupVal & CurVal = GroupValue[P];
+		CurVal.DefendVal += 0.5 * ValOfDom;
+		CurVal.BurnVal += ValOfDom;
+		CurVal.RaidVal += ValOfDom;
+		CurVal.FullAttackVal += ValOfDom;
+	}
+	//gets the total of all the attack values adjusted for distance to the center of your civilization
+	TotGroupValue = GroupVal(0, 0, 0, 0);
+
+	for (Point P :BoardIterate()){
+		TotGroupValue += GroupValue[P] * DisConvert(GetBoardDistance(Center, P));
+	}
+}*/
+/*	auto GetPathFromPoint = [&](Point NewP,Path & OutPath,vector<Path> & ThesePaths){
+		for (Path & Pt : ThesePaths){
+			if (Pt.P == NewP){
+				OutPath = Pt;
+				return true;
+			}
+		}
+		return false;
+	};
+	auto GetPathFromPoint = [&](Point NewP){
+		//takes advantage of the fact that the last point must be in the last two filled in vectors of Paths
+		auto VecIter = Paths.rbegin();
+		//moves VecIter to the last vector that has a nonzero size
+		for (; VecIter != Paths.rend(); VecIter++)
+			if (VecIter->size() != 0)
+				break;
+		Path ReturnPath;
+		if (GetPathFromPoint(NewP, ReturnPath, *VecIter))
+			return ReturnPath;
+		else if (GetPathFromPoint(NewP, ReturnPath, *(VecIter + 1)))
+			return ReturnPath;
+		else
+			return Path({ 0, 0 }, -1000000000.0, NULL);
+	};*/
+//double SimpleCompPlayer::GetValOfOffensiveGroupMove(Group * MoveG, Point MoveP){
+//	//saves the threat
+//	Array2d<SquareThreat> OldThreat = Threat;
+//	auto RemoveThreat = [&](Troop * T){
+//		int TotalRange = T->GetEffectiveRange();
+//		Point ThreatP;
+//		for (RectIterateBegin(T->Spot, TotalRange, TotalRange); RectIterate(ThreatP);){
+//			if (T->TAttackType == TroopAndBuild)
+//				Threat[ThreatP].BThreat -= 1;
+//			Threat[ThreatP].TThreat -= 1;
+//		}
+//	};
+//
+//	Point GroupP = MoveG->GetCen();
+//	Point MoveDis = MoveP - GroupP;
+//	
+//	//basically gets the best spot for each troop to attack and cancels out that bit of threat 
+//	for (Troop * T : MoveG->Troops){
+//		Point NewSpot = T->Spot + MoveDis;
+//		Point AttackSpot;
+//		PointVal BestPoint(0);
+//		for (RectIterateBegin(NewSpot, T->Range, T->Range); RectIterate(AttackSpot);){
+//			if (!BlankPoint(AttackSpot)){
+//				if (CheckAttack(NewSpot, AttackSpot, T->Range)){
+//					PointVal ThisPoint(GetValOfAttack(AttackSpot, T), AttackSpot);
+//					if (ThisPoint > BestPoint)
+//						BestPoint = ThisPoint;
+//				}
+//			}
+//		}
+//		if (BestPoint.Val > 0){
+//			//removes the threat due to this troop
+//			if (GetEnemyOccType(BestPoint.P) == TroopType){
+//				RemoveThreat(GetEnemyTroop(BestPoint.P));
+//			}
+//		}
+//	}
+//	//basically gets the value of the each of the spots the troops will be moving to and adds them up for a total value
+//	double TotalVal = 0;
+//	for (Troop * T : MoveG->Troops){
+//		Point NewSpot = T->Spot + MoveDis;
+//		TotalVal += GetValOfSoldierMove(T, NewSpot, MoveG->GetCen());
+//	}
+//	//restores the threat to its actual value
+//	Threat = OldThreat;
+//
+//	return TotalVal;
+//}
+/*bool Player::DeathFunction(int MovedCoords[MaxMoveDis][2], int x1, int y1, int x2, int y2, int OldX, int OldY, int Range){
+	//unfortunately, this function is not perfect. The only way to make it perfect is if it recursed seperately
+	//along all of the possible paths when it branches, and 
+	//sees the lines and saw which one is a lower range
+
+	//you can theoretically move the board check up here, but it will be slightly less efficient
+	if (x1 >= BoardSizeX || y1 >= BoardSizeY || x1 < 0 || y1 < 0 || Range < 0)
+		return false;
+
+	if (x1 == x2 && y1 == y2){
+		MovedCoords[Range][0] = x1;
+		MovedCoords[Range][1] = y1;
+		return true;
+	}
+	else{
+		//first 4 angle toward diagonals if the thing is in that direction
+		if (PlayerOcc[x1 - 1][y1 + 1] < 0 && !(x1 - 1 == OldX && y1 + 1 == OldY) && (x2 < x1 && y1 < y2)){
+			if (DeathFunction(MovedCoords, x1 - 1, y1 + 1, x2, y2, x1, y1, Range - 1) == true){
+				MovedCoords[Range][0] = x1;
+				MovedCoords[Range][1] = y1;
+				return true;
+			}
+		}
+		if (PlayerOcc[x1 - 1][y1 - 1] < 0 && !(x1 - 1 == OldX && y1 - 1 == OldY) && (x2 < x1 && y1 > y2)){
+			if (DeathFunction(MovedCoords, x1 - 1, y1 - 1, x2, y2, x1, y1, Range - 1) == true){
+				MovedCoords[Range][0] = x1;
+				MovedCoords[Range][1] = y1;
+				return true;
+			}
+		}
+		if (PlayerOcc[x1 + 1][y1 + 1] < 0 && !(x1 + 1 == OldX && y1 + 1 == OldY) && (x2 > x1 && y1 < y2)){
+			if (DeathFunction(MovedCoords, x1 + 1, y1 + 1, x2, y2, x1, y1, Range - 1) == true){
+				MovedCoords[Range][0] = x1;
+				MovedCoords[Range][1] = y1;
+				return true;
+			}
+		}
+		if (PlayerOcc[x1 + 1][y1 - 1] < 0 && !(x1 + 1 == OldX && y1 - 1 == OldY) && (x2 > x1 && y1 > y2)){
+			if (DeathFunction(MovedCoords, x1 + 1, y1 - 1, x2, y2, x1, y1, Range - 1) == true){
+				MovedCoords[Range][0] = x1;
+				MovedCoords[Range][1] = y1;
+				return true;
+			}
+		}
+		if (PlayerOcc[x1][y1 + 1] < 0 && !(x1 == OldX && y1 + 1 == OldY) && (y2 > y1)){
+			if (DeathFunction(MovedCoords, x1, y1 + 1, x2, y2, x1, y1, Range - 1) == true){
+				MovedCoords[Range][0] = x1;
+				MovedCoords[Range][1] = y1;
+				return true;
+			}
+		}
+		if (PlayerOcc[x1][y1 - 1] < 0 && !(x1 == OldX && y1 - 1 == OldY) && (y2 < y1)){
+			if (DeathFunction(MovedCoords, x1, y1 - 1, x2, y2, x1, y1, Range - 1) == true){
+				MovedCoords[Range][0] = x1;
+				MovedCoords[Range][1] = y1;
+				return true;
+			}
+		}
+		if (PlayerOcc[x1 - 1][y1] < 0 && !(x1 - 1 == OldX && y1 == OldY) && (x2 < x1)){
+			if (DeathFunction(MovedCoords, x1 - 1, y1, x2, y2, x1, y1, Range - 1) == true){
+				MovedCoords[Range][0] = x1;
+				MovedCoords[Range][1] = y1;
+				return true;
+			}
+		}
+
+		if (PlayerOcc[x1 + 1][y1] < 0 && !(x1 + 1 == OldX && y1 == OldY) && (x2 > x1)){
+			if (DeathFunction(MovedCoords, x1 + 1, y1, x2, y2, x1, y1, Range - 1) == true){
+				MovedCoords[Range][0] = x1;
+				MovedCoords[Range][1] = y1;
+				return true;
+			}
+		}
+		if (PlayerOcc[x1 - 1][y1 + 1] < 0 && (x1 - 1 == OldX && y1 + 1 == OldY) && (x2 < x1 || y1 < y2)){
+			if (DeathFunction(MovedCoords, x1 - 1, y1 + 1, x2, y2, x1, y1, Range - 1) == true){
+				MovedCoords[Range][0] = x1;
+				MovedCoords[Range][1] = y1;
+				return true;
+			}
+		}
+		if (PlayerOcc[x1 - 1][y1 - 1] < 0 && !(x1 - 1 == OldX && y1 - 1 == OldY) && (x2 < x1 || y1 > y2)){
+			if (DeathFunction(MovedCoords, x1 - 1, y1 - 1, x2, y2, x1, y1, Range - 1) == true){
+				MovedCoords[Range][0] = x1;
+				MovedCoords[Range][1] = y1;
+				return true;
+			}
+		}
+		if (PlayerOcc[x1 + 1][y1 + 1] < 0 && !(x1 + 1 == OldX && y1 + 1 == OldY) && (x2 > x1 || y1 < y2)){
+			if (DeathFunction(MovedCoords, x1 + 1, y1 + 1, x2, y2, x1, y1, Range - 1) == true){
+				MovedCoords[Range][0] = x1;
+				MovedCoords[Range][1] = y1;
+				return true;
+			}
+		}
+		if (PlayerOcc[x1 + 1][y1 - 1] < 0 && !(x1 + 1 == OldX && y1 - 1 == OldY) && (x2 > x1 || y1 > y2)){
+			if (DeathFunction(MovedCoords, x1 + 1, y1 - 1, x2, y2, x1, y1, Range - 1) == true){
+				MovedCoords[Range][0] = x1;
+				MovedCoords[Range][1] = y1;
+				return true;
+			}
+		}
+
+
+		return false;
+	}
+}
+bool CheckMovement2(Point Start, Point End, int & MovePoints){
+	int x1 = Start.X, y1 = Start.Y, x2 = End.X, y2 = End.Y;
+	//initialise movecoords in preperation for death function
+	int MovedCoords[MaxMoveDis][2];
+	for (int g = 0; g < MaxMoveDis; g++){
+		MovedCoords[g][0] = -1;
+		MovedCoords[g][1] = -1;
+	}
+	//make up for weird range probalem
+	MovePoints = MovePoints + 1;
+	bool ReturnValue = DeathFunction(MovedCoords, x1, y1, x2, y2, -1, -1, MovePoints);
+	for (int g = 0; g < MaxMoveDis; g++){
+		if (MovedCoords[g][0] >= 0)
+			MovePoints -= 1;
+	}
+	//make up for weird range counting problem
+	return ReturnValue;
+}*/
+
+	/*
+	int MoneyNum[7];
+	long Marker = 100000000;
+	int k = 0;
+	// gets marker down to just below money
+	while (Marker > Money) 
+		Marker = Marker / 10;
+	//breaks it down to its number
+	while (Marker >= 1){
+		MoneyNum[k] = Money / Marker;
+		Money = Money % Marker;
+		Marker = Marker / 10;
+		k = k + 1;
+	}
+	pRT->DrawText(_T("$"),1,pMoneyForm,Rect,pBlackBrush);
+	Rect.left = Rect.left + BLOCKSIZE / 15;  
+	if(k == 0){
+		Rect.left = Rect.left + BLOCKSIZE / 4; 
+		pRT->DrawText(_T("0"),1,pMoneyForm,Rect,pBlackBrush);
+	}
+	for(int v = 0; v < k; v++){
+		Rect.left = Rect.left + BLOCKSIZE / 4; 
+		if (MoneyNum[v] == 0)
+			pRT->DrawText(_T("0"),1,pMoneyForm,Rect,pBlackBrush);
+		if (MoneyNum[v] == 1)
+			pRT->DrawText(_T("1"),1,pMoneyForm,Rect,pBlackBrush);
+		if (MoneyNum[v] == 2)
+			pRT->DrawText(_T("2"),1,pMoneyForm,Rect,pBlackBrush);
+		if (MoneyNum[v] == 3)
+			pRT->DrawText(_T("3"),1,pMoneyForm,Rect,pBlackBrush);
+		if (MoneyNum[v] == 4)
+			pRT->DrawText(_T("4"),1,pMoneyForm,Rect,pBlackBrush);
+		if (MoneyNum[v] == 5)
+			pRT->DrawText(_T("5"),1,pMoneyForm,Rect,pBlackBrush);
+		if (MoneyNum[v] == 6)
+			pRT->DrawText(_T("6"),1,pMoneyForm,Rect,pBlackBrush);
+		if (MoneyNum[v] == 7)
+			pRT->DrawText(_T("7"),1,pMoneyForm,Rect,pBlackBrush);
+		if (MoneyNum[v] == 8)
+			pRT->DrawText(_T("8"),1,pMoneyForm,Rect,pBlackBrush);
+		if (MoneyNum[v] == 9)
+			pRT->DrawText(_T("9"),1,pMoneyForm,Rect,pBlackBrush);
+	}*/

@@ -1,0 +1,7 @@
+Using platform: Intel(R) OpenCL
+Using device: Intel(R) Core(TM) i7-6700HQ CPU @ 2.60GHz
+Total CPU time = 550
+Total GPU time = 150
+Overhead GPU time = 5
+Compute GPU time = 145
+Results are the same

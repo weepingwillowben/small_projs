@@ -1,0 +1,10 @@
+<!doctype >
+{% block body %}
+<ul>
+    {% for inf in infos %}
+    <li>Info: {{ inf.info }}</li>
+    {% else %}
+    <li> No information! </li>
+    {% endfor %}
+</ul>
+{% endblock %}
