@@ -1,0 +1,6 @@
+*.o
+*.exe
+*.pri
+*.user*
+out.txt
+*.s

@@ -1,0 +1,477 @@
+
+/*
+class neural_net
+{
+public:
+	neural_net():
+		input_activs(img_size),
+		output(out_size,hidden_size),
+		hidden(hidden_size,img_size){}
+
+	vector<float> input_activs;
+	layer output;
+	layer hidden;
+	void set_activ(int data_num){
+		for(int j = 0; j < img_size; j++){
+			input_activs[j] = train_imgs[data_num][j] / 256.0;
+		}
+	}
+	void test(){
+		test_info tot{0,0};
+		for(int b = train_size; b < data_size; b++){
+			//vector<BYTE> data(train_imgs[b],train_imgs[b]+img_size);
+			BYTE lab = train_labs[b];
+			if(lab > out_size)
+				continue;
+			set_activ(b);
+			hidden.forward(input_activs);
+			output.forward(hidden.activs);
+			tot += get_cost(output.activs.data(),train_labs[b]);
+		}
+		cout << "epoc is complete.\n";
+		cout << "cost = " << tot.tot_cost / test_size << "%\n";
+		cout << "% of test data accurate = " << float(tot.tot_terms * 100) / test_size << "\n";
+	}
+	void train_epoc(){
+		float start_t = GetCounter();
+		for(int b = 0; b < train_size; b++){
+			set_activ(b);
+			BYTE real = train_labs[b];
+			if(real > out_size)
+				continue;
+			hidden.forward(input_activs);
+			output.forward(hidden.activs);
+			back_prop_output(output.error.data(),output.activs.data(),output.zs.data(),train_labs[b],out_size);
+			hidden.back_prop(output.error,output.weights);
+			output.accept_error(hidden.activs,lambda,regularsation_param,train_size);
+			hidden.accept_error(input_activs,lambda,regularsation_param,train_size);
+		}
+		float tot_time = GetCounter() - start_t;
+		cout << "time taken = " << tot_time << "seconds\n";
+	}
+	vector<float> output_number(int n){
+		for(float & f : input_activs)
+			f = 0;
+		for(float & f : output.activs)
+			f = 0;
+		for(float & f : output.zs)
+			f = 0;
+		for(float & f : hidden.activs)
+			f = 0;
+		for(float & f : hidden.activs)
+			f = 0;
+		output.activs[n] = 0.99;
+		output.zs[n] = 20;
+
+	}
+};*/
+
+/*class layer
+{
+public:
+	layer(int in_size,int in_prev_size):
+		this_size(in_size),
+		prev_size(in_prev_size),
+		biases(this_size),
+		weights(this_size * prev_size),
+		activs(this_size),
+		zs(this_size),
+		error(this_size)
+	{
+		for(float & f : biases)
+			f = 0;//rand_init(1);
+		for(float & w : weights)
+			w = rand_init(prev_size);
+	}
+
+	int this_size;
+	int prev_size;
+	vector<float> biases;
+	vector<float> weights;
+	vector<float> activs;
+	vector<float> zs;
+	vector<float> error;
+	void forward(vector<float> & prev_activs){
+		activate(prev_activs.data(),weights.data(),biases.data(),activs.data(),zs.data(),prev_size,this_size);
+	}
+	void back_prop(vector<float> & in_error,vector<float> & in_weights){
+		back_prop_layer(error.data(),in_error.data(),in_weights.data(),zs.data(),this_size,in_error.size());
+	}
+	void accept_error(vector<float> & prev_activs,float lamda,float regularsation_param,int training_size){
+		gradient_descent(prev_activs.data(),biases.data(),weights.data(),error.data(),lamda,regularsation_param,this_size,prev_activs.size(),training_size);
+	}
+};*/
+/*
+struct learn_iterator{
+	int data_num;
+	learn_iterator() = default;
+	learn_iterator(int start_num):data_num(start_num){}
+
+	bool operator != (learn_iterator & other){
+		return data_num != other.data_num;
+	}
+	learn_data operator *(){
+		learn_data data;
+		data.input_data.resize(img_size);
+		data.output_data.resize(out_size);
+
+		for(int d = 0; d < out_size;d++)
+			data.output_data[d] = (d == train_labs[data_num]);
+
+		for(int j = 0; j < img_size; j++)
+			 data.input_data[j] = train_imgs[data_num][j] / 256.0;
+
+		return data;
+	}
+	void operator++(){
+		data_num++;
+	}
+};
+template<int start_loc,int end_loc>
+struct data_generator{
+	learn_iterator begin(){
+		return learn_iterator(start_loc);
+	}
+	learn_iterator end(){
+		return learn_iterator(end_loc);
+	}
+};*/
+/*
+
+class layer{
+public:
+	layer()=default;
+	layer(int in_size,int in_prev_size,float in_lambda,float in_reg_param):
+			lambda(in_lambda),
+			reg_param(in_reg_param),
+			size(in_size),
+			biases(size),
+			weights(size * in_prev_size),
+			activs(size),
+			zs(size),
+			error(size)
+	{
+		for(float & f : biases)
+			f = rand_bias();
+		for(float & w : weights)
+			w = rand_weight(in_prev_size);
+	}
+
+	 ~layer() = default;
+	float lambda;
+	float reg_param;
+	int size;
+	vector<float> biases;
+	vector<float> weights;
+	vector<float> activs;
+	vector<float> zs;
+	vector<float> error;
+	void activate(layer * prev){
+		for(int k = 0; k < size; k++){
+			float this_val = biases[k];
+			for (int j = 0; j < prev->size; j++)
+				this_val += prev->activs[j] * weights[j+k * prev->size];
+
+			zs[k] = this_val;
+			activs[k] = activ_fn(this_val);
+		}
+	}
+	void gradient_descent(layer * prev){
+		const float adj_lambda = lambda / size;
+		const float regularzing_weight_const = 1 - adj_lambda * reg_param;
+		for(int k = 0; k < prev->size; k++){
+			float p_error = 0;
+			float p_activs = prev->activs[k];
+			for(int j = 0; j < size; j++){
+				float adj_error = error[j] * adj_lambda;
+
+				float & this_weight = weights[k+j * prev->size];
+				this_weight *= regularzing_weight_const;
+				this_weight += -adj_error * p_activs;
+
+				//backpropogates error
+				p_error += error[j] * this_weight;
+			}
+			prev->error[k] = p_error * activ_fn_deriv(prev->zs[k]);
+		}
+		for(int k = 0;k < size; k++)
+			biases[k] += -error[k] * adj_lambda;
+	}
+};
+
+class output_layer:
+	public layer
+{
+public:
+	output_layer(int size,int prev_size,float in_lambda,float in_reg_param):
+		layer(size,prev_size,in_lambda,in_reg_param)
+	{}
+	output_layer()=default;
+
+	test_info get_correct(vector<float> & expected_activs){
+		float max_val = -1000000.0;
+		int max_num = -1;
+		int expected_num = -1;
+		float sum_diffs_sqrd = 0;
+		for(int j = 0; j < size;j++){
+			float this_val = activs[j];
+			float exp_val = expected_activs[j];
+			sum_diffs_sqrd += sqare(exp_val - this_val);
+			if(this_val > max_val){
+				max_val = this_val;
+				max_num = j;
+			}
+			if (exp_val == float(1))
+				expected_num = j;
+		}
+		if(max_num == -1 || expected_num == -1)
+			cout << "error!\n";
+
+		float tot_cost = sqrt(sum_diffs_sqrd);
+		bool is_accurate = expected_num == max_num;
+
+		return test_info{tot_cost,is_accurate};
+	}
+
+	void back_prop_output(vector<float> & expected_activs){
+		for(int j = 0; j < size; j++){
+			//float is_correct = expected[j];
+			//float act_deriv = activ_fn_deriv(zs[j]);
+			//float cost_d = cost_deriv(activations[j],is_correct);
+			float err = activs[j]-expected_activs[j];//cost_d * act_deriv;
+			if (err != err)
+				cout <<"arg!";
+			error[j] = err;
+		}
+	}
+};
+*/
+
+/*
+class avx_batched_layer :
+		public aligned_layer{
+#define activ_fn(z_ptr,pn,activ_ptr){\
+	_mm256_store_ps(z_ptr,pn);\
+	__m256 val = pn; \
+	val = _mm256_sub_ps(_mm256_setzero_ps(),val); \
+	\
+	float val_mem[8];\
+	_mm256_store_ps(val_mem,val);\
+	exp256_ps(val_mem);\
+	val = _mm256_load_ps(val_mem);\
+	\
+	val = _mm256_add_ps(_mm256_set1_ps(1),val);\
+	val = _mm256_rcp_ps(val);\
+	_mm256_store_ps(activ_ptr,val);\
+}
+
+#define activ_fn_deriv(load_ptr,pn,store_ptr) {\
+	__m256 val = _mm256_load_ps(load_ptr); \
+	val = _mm256_sub_ps(_mm256_setzero_ps(),val); \
+	\
+	float val_mem[8];\
+	_mm256_store_ps(val_mem,val);\
+	exp256_ps(val_mem);\
+	val = _mm256_load_ps(val_mem);\
+	\
+	val = _mm256_add_ps(_mm256_set1_ps(1),val);\
+	val = _mm256_rcp_ps(val);\
+	\
+	__m256 sig_val = val;\
+	__m256 one_minus = _mm256_sub_ps(_mm256_set1_ps(1),sig_val);\
+	val =  _mm256_mul_ps(sig_val,one_minus);\
+	\
+	val = _mm256_mul_ps(pn,val);\
+	_mm256_store_ps(store_ptr,val);\
+}
+public:
+	avx_batched_layer()=default;
+	avx_batched_layer(int in_size,int in_prev_size,float in_lambda,float in_reg_param):
+			aligned_layer(in_size,in_prev_size,in_lambda,in_reg_param)
+	{
+		for(float & f : biases)
+			f = rand_bias();
+		for(float & w : weights)
+			w = rand_weight(in_prev_size);
+	}
+
+	 virtual ~avx_batched_layer() = default;
+
+	virtual void gradient_descent_input(basic_layer * prev){
+		const float adj_lambda = lambda;
+		const float regularzing_weight_const = 1 - adj_lambda * reg_param;
+		for(int k = 0; k < prev->size; k++){
+			float * t_p_activ = &prev->activs[k*BATCH_SIZE];
+			for(int j = 0; j < size; j++){
+				float & this_weight = weights[k+j * prev->size];
+				float * t_error = &error[j*BATCH_SIZE];
+
+				__m256 w = _mm256_set1_ps(this_weight);
+				__m256 lam = _mm256_set1_ps(adj_lambda);
+
+				__m256 er1 = _mm256_load_ps(t_error);
+				__m256 er2 = _mm256_load_ps(t_error + 8);
+				__m256 er3 = _mm256_load_ps(t_error + 16);
+				__m256 er4 = _mm256_load_ps(t_error + 24);
+
+				__m256 act1 = _mm256_load_ps(t_p_activ);
+				__m256 act2 = _mm256_load_ps(t_p_activ + 8);
+				__m256 act3 = _mm256_load_ps(t_p_activ + 16);
+				__m256 act4 = _mm256_load_ps(t_p_activ + 24);
+
+				__m256 aerr1 = _mm256_mul_ps(er1,lam);
+				__m256 aerr2 = _mm256_mul_ps(er2,lam);
+				__m256 aerr3 = _mm256_mul_ps(er3,lam);
+				__m256 aerr4 = _mm256_mul_ps(er4,lam);
+
+				__m256 sum1 = _mm256_setzero_ps();
+				sum1 = _mm256_sub_ps(sum1, _mm256_mul_ps(aerr1,act1));
+				sum1 = _mm256_sub_ps(sum1, _mm256_mul_ps(aerr2,act2));
+				sum1 = _mm256_sub_ps(sum1, _mm256_mul_ps(aerr3,act3));
+				sum1 = _mm256_sub_ps(sum1, _mm256_mul_ps(aerr4,act4));
+
+				__m128 top = _mm256_extractf128_ps(sum1,1);
+				__m128 bottom = _mm256_extractf128_ps(sum1,0);
+
+				top = _mm_add_ps(top,bottom);
+
+				float weight_vec[4];
+				_mm_store_ps(weight_vec,top);
+
+				weight_vec[0] += weight_vec[2];
+				weight_vec[1] += weight_vec[3];
+
+				this_weight += weight_vec[0] + weight_vec[1];
+
+//                for(int i = 0; i < BATCH_SIZE; i += 8){
+//                    float t_t_error = t_error[i];
+
+//                    p_error[i] += t_t_error * this_weight;
+
+//                    float adj_error = t_t_error * adj_lambda;
+//                    this_weight += -adj_error * t_p_activ[i];
+//                }
+			}
+		}
+		for(int k = 0;k < size; k++){
+			float * t_error = &error[k*BATCH_SIZE];
+			float delta_bias = 0;
+			for(int i = 0; i < BATCH_SIZE; i++)
+				delta_bias += -t_error[i] * adj_lambda;
+			biases[k] += delta_bias;
+		}
+	}
+
+	virtual void gradient_descent(basic_layer * prev){
+		const float adj_lambda = lambda;
+		const float regularzing_weight_const = 1 - adj_lambda * reg_param;
+		for(int k = 0; k < prev->size; k++){
+			float * p_error = &prev->error[k*BATCH_SIZE];
+			float * t_p_activ = &prev->activs[k*BATCH_SIZE];
+			__m256 p1 =  _mm256_setzero_ps();
+			__m256 p2 =  _mm256_setzero_ps();
+			__m256 p3 =  _mm256_setzero_ps();
+			__m256 p4 =  _mm256_setzero_ps();
+			for(int j = 0; j < size; j++){
+				float & this_weight = weights[k+j * prev->size];
+				float * t_error = &error[j*BATCH_SIZE];
+
+				__m256 w = _mm256_set1_ps(this_weight);
+				__m256 lam = _mm256_set1_ps(adj_lambda);
+
+				__m256 er1 = _mm256_load_ps(t_error);
+				__m256 er2 = _mm256_load_ps(t_error + 8);
+				__m256 er3 = _mm256_load_ps(t_error + 16);
+				__m256 er4 = _mm256_load_ps(t_error + 24);
+
+				__m256 act1 = _mm256_load_ps(t_p_activ);
+				__m256 act2 = _mm256_load_ps(t_p_activ + 8);
+				__m256 act3 = _mm256_load_ps(t_p_activ + 16);
+				__m256 act4 = _mm256_load_ps(t_p_activ + 24);
+
+				p1 = _mm256_add_ps(p1,_mm256_mul_ps(er1,w));
+				p2 = _mm256_add_ps(p2,_mm256_mul_ps(er2,w));
+				p3 = _mm256_add_ps(p3,_mm256_mul_ps(er3,w));
+				p4 = _mm256_add_ps(p4,_mm256_mul_ps(er4,w));
+
+				__m256 aerr1 = _mm256_mul_ps(er1,lam);
+				__m256 aerr2 = _mm256_mul_ps(er2,lam);
+				__m256 aerr3 = _mm256_mul_ps(er3,lam);
+				__m256 aerr4 = _mm256_mul_ps(er4,lam);
+
+				__m256 sum1 = _mm256_setzero_ps();
+				sum1 = _mm256_sub_ps(sum1, _mm256_mul_ps(aerr1,act1));
+				sum1 = _mm256_sub_ps(sum1, _mm256_mul_ps(aerr2,act2));
+				sum1 = _mm256_sub_ps(sum1, _mm256_mul_ps(aerr3,act3));
+				sum1 = _mm256_sub_ps(sum1, _mm256_mul_ps(aerr4,act4));
+
+				__m128 top = _mm256_extractf128_ps(sum1,1);
+				__m128 bottom = _mm256_extractf128_ps(sum1,0);
+
+				top = _mm_add_ps(top,bottom);
+
+				float weight_vec[4];
+				_mm_store_ps(weight_vec,top);
+
+				weight_vec[0] += weight_vec[2];
+				weight_vec[1] += weight_vec[3];
+
+				this_weight += weight_vec[0] + weight_vec[1];
+
+//                for(int i = 0; i < BATCH_SIZE; i += 8){
+//                    float t_t_error = t_error[i];
+
+//                    p_error[i] += t_t_error * this_weight;
+
+//                    float adj_error = t_t_error * adj_lambda;
+//                    this_weight += -adj_error * t_p_activ[i];
+//                }
+			}
+			float * t_p_zs = &prev->zs[k*BATCH_SIZE];
+			//for(int i = 0; i < BATCH_SIZE; i++)
+			//    p_error[i] *= activ_fn_deriv(t_p_zs[i]);
+			activ_fn_deriv(t_p_zs,p1,p_error);
+			activ_fn_deriv(t_p_zs+8,p2,p_error+8);
+			activ_fn_deriv(t_p_zs+16,p3,p_error+16);
+			activ_fn_deriv(t_p_zs+24,p4,p_error+24);
+		}
+		for(int k = 0;k < size; k++){
+			float * t_error = &error[k*BATCH_SIZE];
+			float delta_bias = 0;
+			for(int i = 0; i < BATCH_SIZE; i++)
+				delta_bias += -t_error[i] * adj_lambda;
+			biases[k] += delta_bias;
+		}
+	}
+	virtual void activate(basic_layer * prev){
+		for(int k = 0; k < size; k++){
+			__m256 t_bias = _mm256_set1_ps(biases[k]);
+			__m256 z1 = t_bias;
+			__m256 z2 = t_bias;
+			__m256 z3 = t_bias;
+			__m256 z4 = t_bias;
+			for (int j = 0; j < prev->size; j++){
+				float * t_p_activ = &prev->activs[j*BATCH_SIZE];
+				float t_weight = weights[j+k * prev->size];
+				__m256 w = _mm256_set1_ps(t_weight);
+#define activate_n(zn,p_a_ptr) zn = _mm256_add_ps(zn,_mm256_mul_ps(w,_mm256_load_ps(p_a_ptr)))
+				activate_n(z1,t_p_activ);
+				activate_n(z2,t_p_activ+8);
+				activate_n(z3,t_p_activ+16);
+				activate_n(z4,t_p_activ+24);
+				//for(int i = 0; i < BATCH_SIZE; i++)
+				//    zs[k*BATCH_SIZE+i] += t_weight * prev->activs[j*BATCH_SIZE+i];
+#undef activate_n
+			}
+			float * this_z = &zs[k*BATCH_SIZE];
+			float * this_act = &activs[k*BATCH_SIZE];
+			activ_fn(this_z,z1,this_act);
+			activ_fn(this_z+8,z2,this_act+8);
+			activ_fn(this_z+16,z3,this_act+16);
+			activ_fn(this_z+24,z4,this_act+24);
+			//for(int i = 0; i < BATCH_SIZE; i++){
+			//    activs[k*BATCH_SIZE+i] = activ_fn(zs[k*BATCH_SIZE+i]);
+		   // }
+		}
+	}
+};*/
